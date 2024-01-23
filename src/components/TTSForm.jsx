@@ -1,15 +1,33 @@
-import React, { useState } from 'react';
-import { Form, Input, Button, DatePicker, TimePicker } from 'antd';
+import React, { useEffect, useState } from 'react';
+import { Form, Input, Button, DatePicker, Select, TimePicker } from 'antd';
 import { Row, Col } from 'antd';
 import dayjs from 'dayjs';
 
 const { TextArea } = Input;
+const { Option } = Select;
 
 function TTSForm() {
   const [message, setMessage] = useState('');
   const [selectedDate, setSelectedDate] = useState(dayjs());
   const [selectedTime, setSelectedTime] = useState(null);
   const [timeoutId, setTimeoutId] = useState(null);
+  const [selectedVoice, setSelectedVoice] = useState(null);
+  const [voices, setVoices] = useState([]);
+
+  useEffect(() => {
+    const handleVoicesChanged = () => {
+      setVoices(window.speechSynthesis.getVoices());
+    };
+
+    window.speechSynthesis.addEventListener('voiceschanged', handleVoicesChanged);
+
+    // Trigger voiceschanged event in case it's already been fired
+    window.speechSynthesis.getVoices();
+
+    return () => {
+      window.speechSynthesis.removeEventListener('voiceschanged', handleVoicesChanged);
+    };
+  }, []);
 
   const calculateDelay = (date, time) => {
     if (!date || !time) {
@@ -84,6 +102,10 @@ function TTSForm() {
     // Set a timeout to trigger the speech synthesis
     const timeoutId = setTimeout(() => {
       var msg = new SpeechSynthesisUtterance(message);
+      const selectedVoiceObject = voices.find(voice => voice.name === selectedVoice);
+      if (selectedVoiceObject) {
+        msg.voice = selectedVoiceObject;
+      }
       window.speechSynthesis.speak(msg);
     }, delay);
     setTimeoutId(timeoutId);
@@ -103,6 +125,19 @@ function TTSForm() {
           value={message}
           onChange={(e) => setMessage(e.target.value)}
         />
+      </Form.Item>
+      <Form.Item>
+        <Select
+          style={{ width: '100%' }}
+          onChange={(value) => setSelectedVoice(value)}
+          placeholder="Select a voice"
+        >
+          {voices.map((voice) => (
+            <Option key={voice.name} value={voice.name}>
+              {voice.name} ({voice.lang})
+            </Option>
+          ))}
+        </Select>
       </Form.Item>
       <Form.Item>
         <Row gutter={16}> 
